@@ -51,11 +51,12 @@
                 (fn [{{id :id :as chat} :chat}]
                   (println "Help was requested in " chat)
                   (t/send-text token id "Estos son los comandos soportados:\n
-/help: Muestra esta ayuda
-/update: Actualiza la base de datos de archivos.")))
+/help: Muestra esta ayuda.
+/update: Actualiza la base de datos de archivos.
+/search patron: Busca el patrón entre los nombres de archivo.")))
 
   (h/command-fn "update"
-                (fn [{{:id :id :as chat} :chat}]
+                (fn [{{id :id :as chat} :chat}]
                   (println "Enviando archivo a " chat)
                   (do
                     (write-db-file "files-db.csv"
@@ -65,10 +66,18 @@
                                                  (-> (walker "/home/functor/books")
                                                      walker-with-id))
                     (t/send-text token id "Actualizada la información de los archivos."))))
-  (h/command-fn "enviar"
-                (fn [{{id :id :as chat} :chat}]
-                  (println "enviando archivo a " chat)
-                  (t/send-document token id (io/file (io/resource "dna.pdf")))))
+
+  (h/command-fn "search"
+                (fn [{{id :id} :chat text :text :as salida}]
+                  (let [text-splited (str/split text #" ")
+                        command (first text-splited)
+                        pattern (second text-splited)
+                        len2 (count (take 2 text-splited))]
+                    (if (and (= command "/search") (= len2 2))
+                      (with-open [file-reader (io/reader "user-interaction-file.csv")]
+                        (doseq [line (line-seq file-reader)]
+                          (if (str/includes? (str/lower-case line) (str/lower-case pattern))
+                            (t/send-text token id line))))))))
 
   (h/message-fn
    (fn [{{id :id} :chat :as message}]
