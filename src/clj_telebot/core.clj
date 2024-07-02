@@ -46,7 +46,7 @@
   (h/command-fn "start"
                 (fn [{{id :id :as chat} :chat}]
                   (println "Nueva conversación: " chat)
-                  (t/send-text token id "Bienvenido a kappa telegram bot :)\nEscriba /ayuda para ver ayuda")))
+                  (t/send-text token id "Bienvenid@ a Kappa telegram bot :)\nLa intención de este robot es compartir archivos libremente a través de Telegram\nEscriba /ayuda para ver ayuda")))
 
   (h/command-fn "ayuda"
                 (fn [{{id :id :as chat} :chat}]
