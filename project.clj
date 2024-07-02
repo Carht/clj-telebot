@@ -1,4 +1,4 @@
-(defproject telbot-upfiles "0.1.0-SNAPSHOT"
+(defproject clj-telebot "0.1.0-SNAPSHOT"
   :description "For share filesystem files using Telegram"
   :url "https://github.com/carht/clj-telebot"
 
@@ -11,7 +11,7 @@
 
   :plugins [[lein-environ "1.1.0"]]
 
-  :main ^:skip-aot telbot-upfiles.core
+  :main ^:skip-aot clj-telebot.core
   :target-path "target/%s"
 
   :profiles {:uberjar {:aot :all}})

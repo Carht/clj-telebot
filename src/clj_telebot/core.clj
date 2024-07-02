@@ -1,4 +1,4 @@
-(ns telbot-upfiles.core
+(ns clj-telebot.core
   (:require [clojure.core.async :refer [<!!]]
             [clojure.string :as str]
             [environ.core :refer [env]]
@@ -116,7 +116,7 @@
 (def channel (p/start token handler))
 (p/stop channel)
 
-(defn main
+(defn -main
   [& args]
   (when (str/blank? token)
     (println "Please provde token in TELEGRAM_TOKEN environment variable!")
