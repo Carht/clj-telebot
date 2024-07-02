@@ -46,20 +46,28 @@
   (h/command-fn "start"
                 (fn [{{id :id :as chat} :chat}]
                   (println "Nueva conversación: " chat)
-                  (t/send-text token id "Bienvenido a kappa bot:)\nEscriba /help para ver ayuda")))
+                  (t/send-text token id "Bienvenido a kappa telegram bot :)\nEscriba /ayuda para ver ayuda")))
 
-  (h/command-fn "help"
+  (h/command-fn "ayuda"
                 (fn [{{id :id :as chat} :chat}]
-                  (println "La ayuda fue solicitada en: " chat)
-                  (t/send-text token id "Estos son los comandos soportados:\n
-/help: Muestra esta ayuda.
-/update: Actualiza la base de datos de archivos.
-/search patron: Busca el patrón entre los nombres de archivo.
-/get id-archivo: Envía el archivo que corresponde con el ID buscado.")))
+                  (println "/ayuda ejecutado por: " chat)
+                  (t/send-text token id "Estos son los comandos disponibles:\n
+/ayuda: Muestra esta ayuda.
+/uso: Ejemplo de uso de comandos.
+/actualizar: Actualiza la base de datos de archivos.
+/buscar *patrón* : Busca el patrón entre los nombres de archivo.
+/traer *id-archivo* : Envía el archivo que corresponde con el ID buscado.")))
 
-  (h/command-fn "update"
+  (h/command-fn "uso"
+                (fn [{{id :id} :chat text :text :as salida}]
+                  (do
+                    (println "/uso ejecutado por: " salida)
+                    (t/send-text token id "/buscar *patrón*: El *patrón* corresponde a algún segmento de nombre de archivo.\nEjemplo: /buscar haskell, mostrará todos los archivos que contengan la palabra haskell en su nombre. \nSe enviará un ID y un nombre de archivo.\n\n
+/traer *ID-archivo*: Trae a Telegram el archivo que tenga dicho ID.\nEjemplo: /traer 1, traerá el archivo (desde el disco duro) que tenga el ID 1."))))
+
+  (h/command-fn "actualizar"
                 (fn [{{id :id :as chat} :chat}]
-                  (println "Enviando archivo a " chat)
+                  (println "/actualizar ejecutado por: " chat)
                   (do
                     (write-db-file "files-db.csv"
                                    (walker-with-id
@@ -69,25 +77,30 @@
                                                      walker-with-id))
                     (t/send-text token id "Actualizada la información de los archivos."))))
 
-  (h/command-fn "search"
+  (h/command-fn "buscar"
                 (fn [{{id :id} :chat text :text :as salida}]
+                  (println "/buscar ejecutado por: " salida)
                   (let [text-splited (str/split text #" ")
                         command (first text-splited)
                         pattern (second text-splited)
                         len2 (count (take 2 text-splited))]
-                    (if (and (= command "/search") (= len2 2))
+                    (if (and (= command "/buscar") (= len2 2))
                       (with-open [file-reader (io/reader "user-interaction-file.csv")]
                         (doseq [line (line-seq file-reader)]
                           (if (str/includes? (str/lower-case line) (str/lower-case pattern))
-                            (t/send-text token id line))))))))
+                            (let [all-line (str/split line #";")
+                                  file-id (first all-line)
+                                  base-path (second all-line)]
+                              (t/send-text token id (str "ID archivo: " file-id "\n" "Nombre: " base-path))))))))))
 
-  (h/command-fn "get"
+  (h/command-fn "traer"
                 (fn [{{id :id} :chat text :text :as salida}]
+                  (println "/traer ejecutado por: " salida)
                   (let [text-splited (str/split text #" ")
                         command (first text-splited)
                         pattern (second text-splited)
                         len2 (count (take 2 text-splited))]
-                    (if (and (= command "/get") (= len2 2))
+                    (if (and (= command "/traer") (= len2 2))
                       (with-open [file-reader (io/reader "files-db.csv")]
                         (doseq [line (line-seq file-reader)]
                           (if (= pattern (str/lower-case (first (str/split line #";"))))
