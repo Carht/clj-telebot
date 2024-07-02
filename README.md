@@ -1,4 +1,4 @@
-# telbot-upfiles
+# Clojure Telegram Bot
 
 For sharing files from filesystem using a Telegram bot.
 
