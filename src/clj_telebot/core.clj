@@ -53,7 +53,8 @@
                   (t/send-text token id "Estos son los comandos soportados:\n
 /help: Muestra esta ayuda.
 /update: Actualiza la base de datos de archivos.
-/search patron: Busca el patrón entre los nombres de archivo.")))
+/search patron: Busca el patrón entre los nombres de archivo.
+/get id-archivo: Envía el archivo que corresponde con el ID buscado.")))
 
   (h/command-fn "update"
                 (fn [{{id :id :as chat} :chat}]
@@ -79,10 +80,24 @@
                           (if (str/includes? (str/lower-case line) (str/lower-case pattern))
                             (t/send-text token id line))))))))
 
+  (h/command-fn "get"
+                (fn [{{id :id} :chat text :text :as salida}]
+                  (let [text-splited (str/split text #" ")
+                        command (first text-splited)
+                        pattern (second text-splited)
+                        len2 (count (take 2 text-splited))]
+                    (if (and (= command "/get") (= len2 2))
+                      (with-open [file-reader (io/reader "files-db.csv")]
+                        (doseq [line (line-seq file-reader)]
+                          (if (= pattern (str/lower-case (first (str/split line #";"))))
+                            (do
+                              (t/send-text token id "Enviando el archivo, por favor espere...")
+                              (t/send-document token id (io/file (second (str/split line #";"))))))))))))
+
   (h/message-fn
    (fn [{{id :id} :chat :as message}]
-     (println "Intercepted message: " message)
-     (t/send-text token id "I don't do a whole lot ... yet."))))
+     (println "Mensaje de telegram: " message)
+     (println "EOF"))))
 
 (def channel (p/start token handler))
 (p/stop channel)
