@@ -38,18 +38,19 @@
 
 ;; telegram bot
 
-(def token (:telegram-token (edn/read-string (slurp "config.edn"))))
+(def token (:telegram-token (:config (edn/read-string (slurp "config.edn")))))
+(def shared-path (:shared-path (:config (edn/read-string (slurp "config.edn")))))
 
 (h/defhandler handler
 
   (h/command-fn "start"
                 (fn [{{id :id :as chat} :chat}]
-                  (println "Bot joined new chat: " chat)
-                  (t/send-text token id "Bienvenido al robot lambda:)\nEscriba /help para ver ayuda")))
+                  (println "Nueva conversación: " chat)
+                  (t/send-text token id "Bienvenido a kappa bot:)\nEscriba /help para ver ayuda")))
 
   (h/command-fn "help"
                 (fn [{{id :id :as chat} :chat}]
-                  (println "Help was requested in " chat)
+                  (println "La ayuda fue solicitada en: " chat)
                   (t/send-text token id "Estos son los comandos soportados:\n
 /help: Muestra esta ayuda.
 /update: Actualiza la base de datos de archivos.
@@ -62,9 +63,9 @@
                   (do
                     (write-db-file "files-db.csv"
                                    (walker-with-id
-                                    (walker "/home/functor/books")))
+                                    (walker shared-path)))
                     (write-user-interaction-file "user-interaction-file.csv"
-                                                 (-> (walker "/home/functor/books")
+                                                 (-> (walker shared-path)
                                                      walker-with-id))
                     (t/send-text token id "Actualizada la información de los archivos."))))
 
