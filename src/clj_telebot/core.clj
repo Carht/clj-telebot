@@ -36,17 +36,32 @@
             base-file-path (base-name (second line))]
         (.write file-w (str id ";" base-file-path "\n"))))))
 
+;; config files
+
+(def dir-config-path (str (System/getProperty "user.home") "/" ".clj-telebot"))
+(def file-config-edn (str dir-config-path "/" "config.edn"))
+
+(defn create-dir-config []
+  (if (not (.exists (io/file dir-config-path)))
+    (do
+      (.mkdir (io/file dir-config-path))
+      (spit file-config-edn
+            "{:config {:telegram-token <TOKEN-HERE-AS-STRING> :shared-path <PATH-TO-SHARED-WITH-TELEGRAM-AS-STRING>}}\n" :append true)
+      (println (str "Por favor configure el archivo " file-config-edn))
+      (System/exit 1))))
+
+(create-dir-config)
 ;; telegram bot
 
-(def token (:telegram-token (:config (edn/read-string (slurp "config.edn")))))
-(def shared-path (:shared-path (:config (edn/read-string (slurp "config.edn")))))
+(def token (:telegram-token (:config (edn/read-string (slurp file-config-edn)))))
+(def shared-path (:shared-path (:config (edn/read-string (slurp file-config-edn)))))
 
 (h/defhandler handler
 
   (h/command-fn "start"
-                (fn [{{id :id :as chat} :chat}]
+                (fn [{{id :id first-name :first_name :as chat} :chat}]
                   (println "Nueva conversación: " chat)
-                  (t/send-text token id "Bienvenid@ a Kappa telegram bot :)\nLa intención de este robot es compartir archivos libremente a través de Telegram\nEscriba /ayuda para ver ayuda")))
+                  (t/send-text token id (str  "Bienvenid@ " first-name " al robot de Telegram :)\nLa intención de este robot es compartir archivos a través de Telegram\nEscriba /ayuda para ver ayuda"))))
 
   (h/command-fn "ayuda"
                 (fn [{{id :id :as chat} :chat}]
@@ -69,10 +84,10 @@
                 (fn [{{id :id :as chat} :chat}]
                   (println "/actualizar ejecutado por: " chat)
                   (do
-                    (write-db-file "files-db.csv"
+                    (write-db-file (str dir-config-path "/" "files-db.csv")
                                    (walker-with-id
                                     (walker shared-path)))
-                    (write-user-interaction-file "user-interaction-file.csv"
+                    (write-user-interaction-file (str dir-config-path "/" "user-interaction-file.csv")
                                                  (-> (walker shared-path)
                                                      walker-with-id))
                     (t/send-text token id "Actualizada la información de los archivos."))))
@@ -85,7 +100,7 @@
                         pattern (second text-splited)
                         len2 (count (take 2 text-splited))]
                     (if (and (= command "/buscar") (= len2 2))
-                      (with-open [file-reader (io/reader "user-interaction-file.csv")]
+                      (with-open [file-reader (io/reader (str dir-config-path "/" "user-interaction-file.csv"))]
                         (doseq [line (line-seq file-reader)]
                           (if (str/includes? (str/lower-case line) (str/lower-case pattern))
                             (let [all-line (str/split line #";")
@@ -101,7 +116,7 @@
                         pattern (second text-splited)
                         len2 (count (take 2 text-splited))]
                     (if (and (= command "/traer") (= len2 2))
-                      (with-open [file-reader (io/reader "files-db.csv")]
+                      (with-open [file-reader (io/reader (str dir-config-path "/" "files-db.csv"))]
                         (doseq [line (line-seq file-reader)]
                           (if (= pattern (str/lower-case (first (str/split line #";"))))
                             (do
@@ -118,9 +133,5 @@
 
 (defn -main
   [& args]
-  (when (str/blank? token)
-    (println "Please provde token in TELEGRAM_TOKEN environment variable!")
-    (System/exit 1))
-
-  (println "Starting the telbot-upfiles")
+  (println "Starting the clj-telebot")
   (<!! (p/start token handler)))
