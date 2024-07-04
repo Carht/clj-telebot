@@ -56,6 +56,15 @@
 (def token (:telegram-token (:config (edn/read-string (slurp file-config-edn)))))
 (def shared-path (:shared-path (:config (edn/read-string (slurp file-config-edn)))))
 
+(defn- create-dbs []
+  (do
+    (write-db-file (str dir-config-path "/" "files-db.csv")
+                   (walker-with-id
+                    (walker shared-path)))
+    (write-user-interaction-file (str dir-config-path "/" "user-interaction-file.csv")
+                                 (-> (walker shared-path)
+                                     walker-with-id))))
+
 (h/defhandler handler
 
   (h/command-fn "start"
@@ -84,17 +93,14 @@
                 (fn [{{id :id :as chat} :chat}]
                   (println "/actualizar ejecutado por: " chat)
                   (do
-                    (write-db-file (str dir-config-path "/" "files-db.csv")
-                                   (walker-with-id
-                                    (walker shared-path)))
-                    (write-user-interaction-file (str dir-config-path "/" "user-interaction-file.csv")
-                                                 (-> (walker shared-path)
-                                                     walker-with-id))
+                    (create-dbs)
                     (t/send-text token id "Actualizada la información de los archivos."))))
 
   (h/command-fn "buscar"
                 (fn [{{id :id} :chat text :text :as salida}]
-                  (println "/buscar ejecutado por: " salida)
+                  (do
+                    (create-dbs)
+                    (println "/buscar ejecutado por: " salida))
                   (let [text-splited (str/split text #" ")
                         command (first text-splited)
                         pattern (second text-splited)
@@ -110,6 +116,9 @@
 
   (h/command-fn "traer"
                 (fn [{{id :id} :chat text :text :as salida}]
+                  (do
+                    (create-dbs)
+                    (println "/traer ejecutado por: " salida))
                   (println "/traer ejecutado por: " salida)
                   (let [text-splited (str/split text #" ")
                         command (first text-splited)
