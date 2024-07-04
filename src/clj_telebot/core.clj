@@ -1,7 +1,6 @@
 (ns clj-telebot.core
   (:require [clojure.core.async :refer [<!!]]
             [clojure.string :as str]
-            [environ.core :refer [env]]
             [morse.handlers :as h]
             [morse.polling :as p]
             [morse.api :as t]
