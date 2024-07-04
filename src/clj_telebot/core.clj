@@ -11,15 +11,18 @@
 
 ;; internals Filesystem
 (defn- walker [dirpath]
+  ;; Return the filepaths recursively from `dirpath'.
   (mapv str (filter #(.isFile %) (file-seq (io/file dirpath)))))
 
 (defn- walker-with-id [walker-file-vector]
+  ;; With the input of the file list, add a counter ID.
   (loop [i 0 v walker-file-vector acc '()]
     (if (empty? v)
       acc
       (recur (inc i) (rest v) (cons (vector (inc i) (first v)) acc)))))
 
 (defn- write-db-file [path-to-write input-data]
+  ;; Create a small database (CSV) of files with id and filepath
   (with-open [file-w (io/writer path-to-write)]
     (doseq [line input-data]
       (let [id (first line)
@@ -27,9 +30,11 @@
         (.write file-w (str id ";" file-path "\n"))))))
 
 (defn- base-name [path]
+  ;; Return the last part of a filepath
   (.getName (io/file path)))
 
 (defn- write-user-interaction-file [path-to-write input-data]
+  ;; Create a small database (CSV) of files with id and base name.
   (with-open [file-w (io/writer path-to-write)]
     (doseq [line input-data]
       (let [id (first line)
@@ -42,6 +47,7 @@
 (def file-config-edn (str dir-config-path "/" "config.edn"))
 
 (defn create-dir-config []
+  ;; Create the basic files necessary for the bot.
   (if (not (.exists (io/file dir-config-path)))
     (do
       (.mkdir (io/file dir-config-path))
@@ -57,6 +63,9 @@
 (def shared-path (:shared-path (:config (edn/read-string (slurp file-config-edn)))))
 
 (defn- create-dbs []
+  ;; Create the small database (CSV) of files, with out a real filesystem.
+  ;; files-db.csv is private and have the real path
+  ;; user-interaction-file have the base name of a file and an id for relation with files-db.csv
   (do
     (write-db-file (str dir-config-path "/" "files-db.csv")
                    (walker-with-id
