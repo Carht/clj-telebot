@@ -82,6 +82,7 @@
                          "-x"
                          "--audio-format" "mp3"
                          "--output" output-template
+                         "--no-playlist"
                          youtube-url)]
     (when (not= 0 (:exit result))
       (throw (Exception. (str "Error al descargar: " (:err result)))))
