@@ -1,5 +1,6 @@
 (ns clj-telebot.core
   (:require [clojure.core.async :refer [<!!]]
+            [clojure.java.shell :as shell]
             [clojure.string :as str]
             [morse.handlers :as h]
             [morse.polling :as p]
@@ -73,6 +74,26 @@
                                  (-> (walker shared-path)
                                      walker-with-id))))
 
+;; Youtube
+(defn- download-youtube-mp3 [youtube-url]
+  (let [temp-dir (System/getProperty "java.io.tmpdir")
+        output-template (str temp-dir "/%(title)s.%(ext)s")
+        result (shell/sh "yt-dlp"
+                         "-x"
+                         "--audio-format" "mp3"
+                         "--output" output-template
+                         youtube-url)]
+    (when (not= 0 (:exit result))
+      (throw (Exception. (str "Error al descargar: " (:err result)))))
+
+    (let [output-line (first (filter #(str/includes? % "[ExtractAudio] Destination:")
+                                     (str/split (:out result) #"\n")))
+          filename (when output-line
+                     (last (str/split output-line #": ")))]
+      (when (not filename)
+        (throw (Exception. "No se pudo determinar el nombre del archivo descargado")))
+      filename)))
+
 (h/defhandler handler
 
   (h/command-fn "start"
@@ -88,7 +109,8 @@
 /uso: Ejemplo de uso de comandos.
 /actualizar: Actualiza la base de datos de archivos.
 /buscar *patrón* : Busca el patrón entre los nombres de archivo.
-/traer *id-archivo* : Envía el archivo que corresponde con el ID buscado.")))
+/traer *id-archivo* : Envía el archivo que corresponde con el ID buscado.
+/mp3 *youtube-url*: Descarga el audio en formato mp3.")))
 
   (h/command-fn "uso"
                 (fn [{{id :id} :chat text :text :as salida}]
@@ -103,6 +125,28 @@
                   (do
                     (create-dbs)
                     (t/send-text token id "Actualizada la información de los archivos."))))
+
+  (h/command-fn "mp3"
+                (fn [{{id :id} :chat text :text :as salida}]
+                  (do
+                    (println "/mp3 usado por: " salida))
+                  (let [text-splited (str/split text #" ")
+                        command (first text-splited)
+                        pattern (second text-splited)
+                        len2 (count (take 2 text-splited))]
+                    (if (and (= command "/mp3") (= len2 2))
+                      (cond
+                        (or (nil? pattern) (not (str/includes? pattern "youtube.com"))) (t/send-text token id "Ingrese una url válida.")
+                        (str/includes? pattern "www.youtube.com/results") (t/send-text token id "Ingrese una URL directa Ejemplo:\nhttps://www.youtube.com/watch?v=WfX4OoJhAbg")
+                        :else
+                        (try
+                          (t/send-text token id "Descargando audio...")
+                          (let [audio-file (download-youtube-mp3 pattern)]
+                            (t/send-document token id (io/file audio-file))
+                            (io/delete-file audio-file)
+                            (t/send-text token id "¡Audio enviado!"))
+                          (catch Exception e
+                            (t/send-text token id (str "Error: " (.getMessage e))))))))))
 
   (h/command-fn "buscar"
                 (fn [{{id :id} :chat text :text :as salida}]
