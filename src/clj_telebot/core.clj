@@ -11,18 +11,18 @@
 
 ;; internals Filesystem
 (defn- walker [dirpath]
-  ;; Return the filepaths recursively from `dirpath'.
+  "Return the filepaths recursively from `dirpath'."
   (mapv str (filter #(.isFile %) (file-seq (io/file dirpath)))))
 
 (defn- walker-with-id [walker-file-vector]
-  ;; With the input of the file list, add a counter ID.
+  "With the input of the file list, add a counter ID."
   (loop [i 0 v walker-file-vector acc '()]
     (if (empty? v)
       acc
       (recur (inc i) (rest v) (cons (vector (inc i) (first v)) acc)))))
 
 (defn- write-db-file [path-to-write input-data]
-  ;; Create a small database (CSV) of files with id and filepath
+  "Create a small database (CSV) of files with id and filepath"
   (with-open [file-w (io/writer path-to-write)]
     (doseq [line input-data]
       (let [id (first line)
@@ -30,11 +30,11 @@
         (.write file-w (str id ";" file-path "\n"))))))
 
 (defn- base-name [path]
-  ;; Return the last part of a filepath
+  "Return the last part of a filepath."
   (.getName (io/file path)))
 
 (defn- write-user-interaction-file [path-to-write input-data]
-  ;; Create a small database (CSV) of files with id and base name.
+  "Create a small database (CSV) of files with id and base name."
   (with-open [file-w (io/writer path-to-write)]
     (doseq [line input-data]
       (let [id (first line)
@@ -47,7 +47,7 @@
 (def file-config-edn (str dir-config-path "/" "config.edn"))
 
 (defn create-dir-config []
-  ;; Create the basic files necessary for the bot.
+  "Create the basic files necessary for the bot."
   (if (not (.exists (io/file dir-config-path)))
     (do
       (.mkdir (io/file dir-config-path))
@@ -63,9 +63,9 @@
 (def shared-path (:shared-path (:config (edn/read-string (slurp file-config-edn)))))
 
 (defn- create-dbs []
-  ;; Create the small database (CSV) of files, with out a real filesystem.
-  ;; files-db.csv is private and have the real path
-  ;; user-interaction-file have the base name of a file and an id for relation with files-db.csv
+  "Create the small database (CSV) of files, with out a real filesystem.
+  files-db.csv is private and have the real path
+  user-interaction-file have the base name of a file and an id for relation with files-db.csv"
   (do
     (write-db-file (str dir-config-path "/" "files-db.csv")
                    (walker-with-id
@@ -76,6 +76,7 @@
 
 ;; Youtube
 (defn- download-youtube-mp3 [youtube-url]
+  "Usa yt-dlp para descargar los audios usando como fuente la URL de `youtube-url'"
   (let [temp-dir (System/getProperty "java.io.tmpdir")
         output-template (str temp-dir "/%(title)s.%(ext)s")
         result (shell/sh "yt-dlp"
@@ -96,15 +97,16 @@
       filename)))
 
 (defn- decode-query [youtube-url]
-  ;; Dada una URL de youtube en formato string, producto de una búsqueda,
-  ;; ejemplo: https://www.youtube.com/results?search_query=miley%20cyrus%20we%20can%27t%20stop
-  ;; extrae "miley cyrus we can't stop"
+  "Dada una URL de youtube en formato string, producto de una búsqueda,
+  ejemplo: https://www.youtube.com/results?search_query=miley%20cyrus%20we%20can%27t%20stop
+  extrae 'miley cyrus we can't stop'"
   (if (str/includes? youtube-url "youtube.com/results")
     (let [query-params (second (re-find #"search_query=([^&]+)" youtube-url))
           decoded-query (java.net.URLDecoder/decode query-params "UTF-8")]
       decoded-query)))
 
 (defn- download-youtube-from-query [youtube-url]
+  "Dada una URL de `youtube-url' tipo query, se realiza la descarga del primer audio."
   (let [decoded-url (decode-query youtube-url)
         youtube-dirty-id (shell/sh "yt-dlp"
                                     "--get-id"
