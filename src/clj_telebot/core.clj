@@ -137,7 +137,7 @@
                         len2 (count (take 2 text-splited))]
                     (if (and (= command "/mp3") (= len2 2))
                       (cond
-                        (or (nil? pattern) (not (str/includes? pattern "youtube.com"))) (t/send-text token id "Ingrese una url válida.")
+                        (or (nil? pattern) (not (str/includes? pattern "youtu"))) (t/send-text token id "Ingrese una url válida.")
                         (str/includes? pattern "www.youtube.com/results") (t/send-text token id "Ingrese una URL directa Ejemplo:\nhttps://www.youtube.com/watch?v=WfX4OoJhAbg")
                         :else
                         (try
