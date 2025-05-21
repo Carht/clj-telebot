@@ -95,6 +95,26 @@
         (throw (Exception. "No se pudo determinar el nombre del archivo descargado")))
       filename)))
 
+(defn- decode-query [youtube-url]
+  ;; Dada una URL de youtube en formato string, producto de una búsqueda,
+  ;; ejemplo: https://www.youtube.com/results?search_query=miley%20cyrus%20we%20can%27t%20stop
+  ;; extrae "miley cyrus we can't stop"
+  (if (str/includes? youtube-url "youtube.com/results")
+    (let [query-params (second (re-find #"search_query=([^&]+)" youtube-url))
+          decoded-query (java.net.URLDecoder/decode query-params "UTF-8")]
+      decoded-query)))
+
+(defn- download-youtube-from-query [youtube-url]
+  (let [decoded-url (decode-query youtube-url)
+        youtube-dirty-id (shell/sh "yt-dlp"
+                                    "--get-id"
+                                    "--no-playlist"
+                                    (str "ytsearch1:" decoded-url))
+        youtube-clean-id (str/trim (:out youtube-dirty-id))]
+    (when (and (= 0 (:exit youtube-dirty-id)) (not (str/blank? youtube-clean-id)))
+      (download-youtube-mp3 (str "https://youtube.com/watch?v=" youtube-clean-id)))))
+        
+
 (h/defhandler handler
 
   (h/command-fn "start"
@@ -138,7 +158,15 @@
                     (if (and (= command "/mp3") (= len2 2))
                       (cond
                         (or (nil? pattern) (not (str/includes? pattern "youtu"))) (t/send-text token id "Ingrese una url válida.")
-                        (str/includes? pattern "www.youtube.com/results") (t/send-text token id "Ingrese una URL directa Ejemplo:\nhttps://www.youtube.com/watch?v=WfX4OoJhAbg")
+                        (str/includes? pattern "www.youtube.com/results")
+                        (try
+                          (t/send-text token id "Descargando audio...")
+                          (let [audio-file (download-youtube-from-query pattern)]
+                            (t/send-document token id (io/file audio-file))
+                            (io/delete-file audio-file)
+                            (t/send-text token id "¡Audio enviado!"))
+                          (catch Exception e
+                            (t/send-text token id (str "Error: " (.getMessage e)))))
                         :else
                         (try
                           (t/send-text token id "Descargando audio...")
