@@ -1,23 +1,15 @@
-# Clojure Telegram Bot
+# Características
 
-For sharing files from filesystem using a Telegram bot.
-
-Para compartir archivos del sistema de archivos usando Telegram.
-
-## Motivación
-
-Lejos del computador y ¿necesitas un archivo de tu disco duro?. Ok, con telegram puedes tener una solución.
-
-## Intención
-
-La idea es compartir un directorio de archivos, buscas los archivos usando una palabra clave y posteriormente enviarlo al Telegram.
-
-
-El diseño es para uso personal, amistades o para el público, similar como los FTP libres de algunos años, la diferencia
-radica en que no puedes ver el filesystem sólo puedes acceder a los nombres de archivo, sin importar el anidamiento del
-sistema de archivos real.
+1. Permite buscar y compartir archivos del sistema de archivos usando Telegram.
+2. Descarga de audios en formato mp3 desde youtube.
+3. Guarda las imágenes, documentos y mensajes de voz enviados al canal del robot
 
 ## Uso
+
+Usando los comandos del robot puedes subir desde tu disco duro al telegram los archivos que necesites, los
+buscas usando palabras que estén presente en el título.
+
+## Procedimiento paso a paso
 
 1. Crea un robot con BotFather en Telegram.
 2. Al ejecutar el archivo .jar, se creará el directorio /home/tu-usuario/.clj-telebot, el cuál contendrá el archivo
