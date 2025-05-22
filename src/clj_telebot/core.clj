@@ -6,10 +6,14 @@
             [morse.polling :as p]
             [morse.api :as t]
             [clojure.edn :as edn]
-            [clojure.java.io :as io])
+            [clojure.java.io :as io]
+            [clj-http.client :as http])
   (:gen-class))
 
+;;
 ;; internals Filesystem
+;;
+
 (defn- walker [dirpath]
   "Return the filepaths recursively from `dirpath'."
   (mapv str (filter #(.isFile %) (file-seq (io/file dirpath)))))
@@ -41,7 +45,9 @@
             base-file-path (base-name (second line))]
         (.write file-w (str id ";" base-file-path "\n"))))))
 
+;;
 ;; config files
+;;
 
 (def dir-config-path (str (System/getProperty "user.home") "/" ".clj-telebot"))
 (def file-config-edn (str dir-config-path "/" "config.edn"))
@@ -57,7 +63,10 @@
       (System/exit 1))))
 
 (create-dir-config)
+
+;;
 ;; telegram bot
+;;
 
 (def token (:telegram-token (:config (edn/read-string (slurp file-config-edn)))))
 (def shared-path (:shared-path (:config (edn/read-string (slurp file-config-edn)))))
@@ -74,7 +83,10 @@
                                  (-> (walker shared-path)
                                      walker-with-id))))
 
+;;
 ;; Youtube
+;;
+
 (defn- download-youtube-mp3 [youtube-url]
   "Usa yt-dlp para descargar los audios usando como fuente la URL de `youtube-url'"
   (let [temp-dir (System/getProperty "java.io.tmpdir")
@@ -115,7 +127,21 @@
         youtube-clean-id (str/trim (:out youtube-dirty-id))]
     (when (and (= 0 (:exit youtube-dirty-id)) (not (str/blank? youtube-clean-id)))
       (download-youtube-mp3 (str "https://youtube.com/watch?v=" youtube-clean-id)))))
-        
+
+;;
+;; download files
+;;
+
+(defn- download-file-tl
+  [token file-id output-path]
+  (let [file-info (t/get-file token file-id)
+        file-path (get-in file-info [:result :file_path])
+        file-url-download (str "https://api.telegram.org/file/bot" token "/" file-path)]
+    (when file-path
+      (let [file-data (http/get file-url-download {:as :byte-array})]
+        (with-open [output-stream (io/output-stream output-path)]
+          (.write output-stream (:body file-data)))
+        (println "Archivo descargado en: " output-path)))))
 
 (h/defhandler handler
 
@@ -217,13 +243,27 @@
 
   (h/message-fn
    (fn [{{id :id} :chat :as message}]
-     (println "Mensaje de telegram: " message)
-     (println "EOF"))))
+     (cond
+       ;; `get-in' si existe retorna datos, sino, nil.
+       (get-in message [:photo])
+       (let [file-id (:file_id (last (get-in message [:photo])))] ;;match específico para :photo
+         (download-file-tl token file-id "example.png"))
+
+       (get-in message [:document])
+       (let [file-id (get-in message [:document :file_id])] ;; match específico para :document
+         (download-file-tl token file-id "example1"))
+       
+       (get-in message [:voice])
+       (let [file-id (get-in message [:voice :file_id])] ;; match para extraer :file_id del json :voice
+         (download-file-tl token file-id "example2"))
+
+       :else
+       (t/send-text token id (get-in message [:text]))))))
 
 (def channel (p/start token handler))
 (p/stop channel)
 
 (defn -main
   [& args]
-  (println "Starting the clj-telebot")
+  (println "Iniciando el clojurebot")
   (<!! (p/start token handler)))

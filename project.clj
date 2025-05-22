@@ -6,7 +6,7 @@
             :url "https://www.gnu.org/licenses/gpl-3.0.html"}
 
   :dependencies [[org.clojure/clojure "1.8.0"]
-                 [morse               "0.2.4"]]
+                 [morse               "0.4.3"]]
 
   :main ^:skip-aot clj-telebot.core
   :target-path "target/%s"
